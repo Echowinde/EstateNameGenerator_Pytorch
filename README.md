@@ -1,0 +1,2 @@
+# EstateNameGenerator_Pytorch
+从链家爬取全国楼盘信息，使用LSTM实现房地产楼盘名的AI生成
