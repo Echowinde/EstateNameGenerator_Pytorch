@@ -43,7 +43,57 @@ python main.py
     > vocabulary.npz  数组形式的楼盘名和数据对应词库  
 
 ## 楼盘信息爬虫  
-pass
+### 定位城市页面
+爬虫目标是链家的全国新房网站，以北京为例，url为https://bj.fang.lianjia.com/loupan/。观察可以发现，不同城市页面url的区别在于开头的城市缩写。而网页左上点开一个选择城市的弹窗，可以跳转到对应城市页面。
+![城市缩写](./image/city_url.png "city_url")
+在网页源码搜索城市名，不难定位到下面的div标签，每个a标签的href记录了各城市的url。
+```html
+<div class="city-enum fl">
+    <a href="//bd.fang.lianjia.com" title="保定房产网">保定</a>
+    <a href="//byne.fang.lianjia.com" title="巴彦淖尔房产网">巴彦淖尔</a>
+    <a href="//bh.fang.lianjia.com" title="北海房产网">北海</a>
+    <a href="//bt.fang.lianjia.com" title="保亭房产网">保亭</a>
+    <a href="//bj.fang.lianjia.com" title="北京房产网">北京</a>                           
+</div>
+```
+### 获取页码
+网页上会显示当前城市的房源数，源码可定位到如下标签：
+```html
+<div class="resblock-have-find">
+    <div>
+        <span>为您找到</span>
+        <span class="value">184</span>
+        <span>个北京新房</span>
+    </div>
+</div>
+```
+链家网站每页显示10个楼盘信息，因此对房源数除以10并向上取整获得需爬取的页数。
+> - 部分城市实际能爬取的楼盘数小于显示的房源数
+> - 链家网站上页数最多显示100页，但通过直接访问对应页码url的方式，实际能得到后面页数的楼盘信息。
+### 定位楼盘信息
+![楼盘信息](./image/estate.png "city_url")
+在源码中搜索某一楼盘名可定位到class为resblock-desc-wrapper的div标签，其中楼盘名记录在class为resblock-name的子标签中。其余子标签还记录了楼盘位置、户型、面积和价格等信息，与网页呈现内容对应。
+```html
+<div class="resblock-desc-wrapper">
+    <div class="resblock-name">
+        <a href="/loupan/p_hsmeybmbls/" ...>合生me悦</a>
+        <span class="resblock-type" style="background: #FB9252;">住宅</span>
+        <span class="sale-status" style="background: #53CC9A;">在售</span>
+    </div>
+    <div class="resblock-location">...</div>
+    <a class="resblock-room"...></a>
+    <div class="resblock-area">...</div>
+    <div class="resblock-agent">...</div>
+    <div class="resblock-tag">...</div>
+    <div class="resblock-price">...</div>
+</div>
+```
+>crawler.py中只爬取了楼盘名与每平米单价，若需要其余信息可额外从对应标签中获取。
+### 爬虫伪装
+链家网站有一定反爬监测，同一IP频繁爬取很快会弹出验证码。除了请求头的User-Agent伪装外，额外采取了以下措施：
+1. 将上一次访问的页面记录作为爬取下一页时请求头的Referer，模拟人的页面访问逻辑
+2. 每爬取一页随机暂停5s~15s，降低浏览速度。
+> 有条件可以设置IP代理
 ## 数据处理  
 ### 数据清洗
 基于以下原则对爬取的原始数据进行清洗  
@@ -57,7 +107,7 @@ pass
 ### 序列长度
 当前模型中只取名字长度为2~8的楼盘名进行训练。加上起始符\<SOS>和终止符\<EOS>后，序列长度为10。长度不足10的数据在终止符后填充<\\s>补齐。  
 
-pass
+
 ## 模型结构
 ``` python
 class MyModel(nn.Module):
