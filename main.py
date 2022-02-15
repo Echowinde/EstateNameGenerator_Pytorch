@@ -8,6 +8,9 @@ from model import Config
 
 
 def load_model_and_vocabulary():
+    """
+    加载训练好的模型及词库并返回
+    """
     if not os.path.exists('./model.pth'):
         print("请先运行train.py训练模型")
 
@@ -19,30 +22,33 @@ def load_model_and_vocabulary():
 
 
 def generator(model, ix2word, word2ix, config, start=''):
-    if start != '':
+    """
+    根据输入生成楼盘名
+    """
+    if start != '':  # 如果输入了起始字
         results = list(start)
         start_len = len(results)
         inputs = Variable(torch.Tensor([word2ix[results[0]]]).view(1, 1).long())
         hidden = None
-    else:
+    else:  # 输入为空，随机生成楼盘名
         results = []
         start_len = 0
-        inputs = Variable(torch.Tensor([word2ix["<SOS>"]]).view(1, 1).long())
-        hidden = (Variable(torch.rand(2, 1, config.hidden_dim)), Variable(torch.rand(2, 1, config.hidden_dim)))
+        inputs = Variable(torch.Tensor([word2ix["<SOS>"]]).view(1, 1).long())  # input设置为<SOS>
+        hidden = (Variable(torch.rand(2, 1, config.hidden_dim)), Variable(torch.rand(2, 1, config.hidden_dim)))  # 随机初始化
 
     for i in range(10):
         output, hidden = model(inputs, hidden)
 
-        if i < start_len:
-            word = start[i]
+        if i < start_len:  # 名字仍在起始字范围内
+            word = start[i]  # 模型输入直接设置为输入的起始字，目标是获取起始字最后的hidden状态
             inputs = Variable(inputs.data.new([word2ix[word]])).view(1, 1)
         else:
-            top = output.data[0].topk(1)[1][0].item()
+            top = output.data[0].topk(1)[1][0].item()  # 概率第一的结果
             word = ix2word[top]
             results.append(word)
             inputs = Variable(inputs.data.new([top])).view(1, 1)
 
-        if (word == "<EOS>") | (word == "<\\s>"):
+        if (word == "<EOS>") | (word == "<\\s>"):  # 输出结束
             break
 
     return ''.join(results[:-1])
@@ -52,7 +58,7 @@ if __name__ == "__main__":
     model, word2ix, ix2word = load_model_and_vocabulary()
     config = Config()
     while True:
-        start_word = input("请输入任意个楼盘起始字，直接回车则随机生成楼盘名，输入exit退出：\n")
+        start_word = input("请输入任意个起始字或随机生成楼盘名，输入exit退出：")
         if start_word == 'exit':
             break
         result = generator(model, ix2word, word2ix, config, start_word)
