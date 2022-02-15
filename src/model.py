@@ -15,23 +15,21 @@ class Config:
 
 
 class MyModel(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim):  # (所有汉字数,词向量维度,隐藏层维度)
+    def __init__(self, vocab_size, embedding_dim, hidden_dim):  # (词库大小, 词向量维度, LSTM隐藏层维度)
         super().__init__()
-        self.hidden_dim = hidden_dim  # 隐藏层
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim)  # 词表大小/词维度
-        self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, num_layers=2, batch_first=True)  # [输入维度,输出维度,网络层数]/LSTM
+        self.hidden_dim = hidden_dim
+        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, self.hidden_dim, num_layers=2, batch_first=True)  # LSTM
         self.linear = nn.Linear(self.hidden_dim, vocab_size)  # 全连接层
 
-    def forward(self, input_, hidden=None):  # input_形状  (seq_len, batch_size)
-        batch_size, seq_len = input_.size()
-
+    def forward(self, input_, hidden=None):
+        batch_size, seq_len = input_.size()  # (batch_size, seq_len)
         if hidden is None:
-            h_0, c_0 = Variable(torch.zeros(2, batch_size, self.hidden_dim)), Variable(
-                torch.zeros(2, batch_size, self.hidden_dim))
+            h_0 = Variable(torch.zeros(2, batch_size, self.hidden_dim))
+            c_0 = Variable(torch.zeros(2, batch_size, self.hidden_dim))
         else:
             h_0, c_0 = hidden
-        embeds = self.embeddings(input_)
+        embeds = self.embeddings(input_)  # (batch_size, seq_len, embedding_dim)
         output, hidden = self.lstm(embeds, (h_0, c_0))
-        output = self.linear(output.contiguous().view(seq_len * batch_size, -1))
-
+        output = self.linear(output.contiguous().view(batch_size * seq_len, -1))  # (batch_size, seq_len, hidden_dim)
         return output, hidden
