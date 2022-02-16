@@ -30,6 +30,7 @@ python main.py
 ```
 ## 目录说明
 - main.py  生成器主程序
+- model.pth  预训练好的模型
 - src存放爬虫、数据处理、模型及训练代码  
     > crawler.py  全国楼盘信息爬虫  
     > data_preprocess.py  原始数据处理  
@@ -44,7 +45,9 @@ python main.py
 
 ## 楼盘信息爬虫  
 ### 定位城市页面
-爬虫目标是链家的全国新房网站，以北京为例，url为https://bj.fang.lianjia.com/loupan/。观察可以发现，不同城市页面url的区别在于开头的城市缩写。而网页左上点开一个选择城市的弹窗，可以跳转到对应城市页面。
+爬虫目标是链家的全国新房网站，以北京为例，url为https://bj.fang.lianjia.com/loupan/  
+
+观察可以发现，不同城市页面url的区别在于开头的城市缩写。而网页左上点开一个选择城市的弹窗，可以跳转到对应城市页面。
 ![城市缩写](./image/city_url.png "city_url")
 在网页源码搜索城市名，不难定位到下面的div标签，每个a标签的href记录了各城市的url。
 ```html
@@ -109,6 +112,7 @@ python main.py
 
 
 ## 模型结构
+Embedding + 双层LSTM + Linear
 ``` python
 class MyModel(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim):  # (词库大小, 词向量维度, LSTM隐藏层维度)
@@ -130,10 +134,11 @@ class MyModel(nn.Module):
         output = self.linear(output.contiguous().view(batch_size * seq_len, -1))  # (batch_size, seq_len, hidden_dim)
         return output, hidden
 ```
+输入input_维度为(batch_size, seq_len)，这里的seq_len是数据中的序列长度-1。如果同时输入了hidden则用该hidden初始化h0和c0，否则用全0初始化。  
+经过Embedding后输出维度(batch_size, seq_len, embedding_dim)（LSTM设置为了batch_first）  
+经过LSTM后输出维度(batch_size, seq_len, hidden_dim)  
+最后通过Linear层输出(batch_size, seq_len, vocab_size)
 ##  使用注意
 1. 当前数据量较少。由于仅爬取了链家全国新房数据，不涉及二手房，经过清洗后数据量不到20000条，词库大小不到2000词。
 2. 由于1中的原因，冷门字可能不在词库内，或由于样本太少而训练不足。
-2. 目前仅支持起始字生成楼盘名，不支持中间字生成。
-
-详细说明待补全  
-to be continuted
+3. 目前仅支持起始字生成楼盘名，不支持中间字生成。同一起始前缀生成结果固定。
