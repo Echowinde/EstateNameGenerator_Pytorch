@@ -82,7 +82,7 @@ def get_estate_data(city_list):
             print('Error:', e.args)
 
         entry_div = soup.find("div", {"class": "resblock-have-find"})    # 定位到楼盘信息展示位置
-        entries = re.search(r'<span class="value">(\d+)</span>', str(entry_div)).group(1)
+        entries = re.search(r'<span class="value ?">(\d+)</span>', str(entry_div)).group(1)    # value后可能有空格可能没有
         pages = ceil(int(entries) // 10 + 1)    # 计算要爬取的页数，链家每页展示10个楼盘
         print(f"{city['name']}共有楼盘{entries}个，预计爬取{pages}页")
 
